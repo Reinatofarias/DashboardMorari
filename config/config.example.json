@@ -1,0 +1,34 @@
+{
+    "facebook": {
+        "app_id": "SEU_APP_ID",
+        "app_secret": "SEU_APP_SECRET",
+        "access_token": "SEU_ACCESS_TOKEN",
+        "ad_account_id": "SEU_AD_ACCOUNT_ID"
+    },
+    "metrics": [
+        "impressions",
+        "clicks",
+        "spend",
+        "reach",
+        "cpc",
+        "ctr",
+        "cpm",
+        "cpp",
+        "frequency",
+        "likes",
+        "comments",
+        "shares",
+        "post_reactions",
+        "video_views",
+        "link_clicks",
+        "website_purchases",
+        "website_purchases_value",
+        "add_to_cart",
+        "initiate_checkout",
+        "add_payment_info",
+        "complete_registration",
+        "lead"
+    ],
+    "date_preset": "last_30d",
+    "level": "account"
+}

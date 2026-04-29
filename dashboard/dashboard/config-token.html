@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Token - PowerBI META</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #1a1a1a; color: #fff; }
+        h1 { color: #FFD700; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
+        input { background: #333; color: #fff; }
+        button { background: #FFD700; color: #000; font-weight: bold; cursor: pointer; }
+        .info { background: #333; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .erro { background: #c00; padding: 10px; border-radius: 5px; display: none; }
+        .sucesso { background: #0a0; padding: 10px; border-radius: 5px; display: none; }
+    </style>
+</head>
+<body>
+    <h1>⚙️ Configurar Token</h1>
+    
+    <div class="info" id="tokenInfo">Carregando...</div>
+    
+    <p>Novo Token:</p>
+    <input type="text" id="novoToken" placeholder="Cole o token aqui...">
+    <button onclick="salvarToken()">Salvar Token</button>
+    
+    <div class="erro" id="erro"></div>
+    <div class="sucesso" id="sucesso"></div>
+    
+    <p style="margin-top: 30px; color: #888; font-size: 12px;">
+        Gere um novo token em: <a href="https://developers.facebook.com/tools/explorer/" target="_blank" style="color: #FFD700;">Graph API Explorer</a>
+    </p>
+
+    <script>
+        async function carregarInfo() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                const info = document.getElementById('tokenInfo');
+                
+                if (data.token && data.token.expires_at) {
+                    const exp = new Date(data.token.expires_at);
+                    info.innerHTML = `
+                        <strong>Status:</strong> Token ativo<br>
+                        <strong>Expira em:</strong> ${exp.toLocaleDateString('pt-BR')}
+                    `;
+                } else {
+                    info.innerHTML = '<strong style="color: #c00;">Token não configurado!</strong>';
+                }
+            } catch (e) {
+                document.getElementById('tokenInfo').innerHTML = 'Erro ao carregar: ' + e.message;
+            }
+        }
+        
+        async function salvarToken() {
+            const token = document.getElementById('novoToken').value.trim();
+            if (!token) {
+                document.getElementById('erro').style.display = 'block';
+                document.getElementById('erro').textContent = 'Cole um token válido!';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/salvar-token', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({token: token})
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('sucesso').style.display = 'block';
+                    document.getElementById('sucesso').textContent = 'Token salvo com sucesso!';
+                    document.getElementById('erro').style.display = 'none';
+                    carregarInfo();
+                } else {
+                    document.getElementById('erro').style.display = 'block';
+                    document.getElementById('erro').textContent = data.message;
+                }
+            } catch (e) {
+                document.getElementById('erro').style.display = 'block';
+                document.getElementById('erro').textContent = 'Erro: ' + e.message;
+            }
+        }
+        
+        carregarInfo();
+    </script>
+</body>
+</html>

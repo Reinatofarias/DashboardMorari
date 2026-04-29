@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Ads Dashboard - PowerBI</title>
+    <link rel="stylesheet" href="/static/styles.css?v=10">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>MORARI PROJECT DASHBOARD</h1>
+                <span class="subtitle">Business Intelligence</span>
+            </div>
+            <div class="header-right">
+                <div class="date-range">
+                    <label>De: <input type="date" id="startDate"></label>
+                    <label>Ate: <input type="date" id="endDate"></label>
+                </div>
+                <button id="btnRefresh" class="btn-refresh" onclick="refreshData()">
+                    <span class="refresh-icon">&#x21bb;</span> Atualizar Dados
+                </button>
+                <span id="lastUpdate" class="last-update"></span>
+            </div>
+        </header>
+
+        <div id="loading" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Atualizando dados...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Impressoes</span>
+                    <span class="kpi-value" id="kpiImpressions">0</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Cliques</span>
+                    <span class="kpi-value" id="kpiClicks">0</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Alcance</span>
+                    <span class="kpi-value" id="kpiReach">0</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Finalizacao de Compras</span>
+                    <span class="kpi-value" id="kpiPurchases">0</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">CPA</span>
+                    <span class="kpi-value" id="kpiCPA">R$ 0,00</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Custo por Resultado</span>
+                    <span class="kpi-value" id="kpiCostPerResult">R$ 0,00</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Valor Usado</span>
+                    <span class="kpi-value" id="kpiSpend">R$ 0,00</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">CTR</span>
+                    <span class="kpi-value" id="kpiCTR">0%</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <span class="kpi-label">Connect Rate</span>
+                    <span class="kpi-value" id="kpiConnectRate">0%</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="charts-grid">
+            <div class="chart-card">
+                <h2>Tendencia de Impressoes e Cliques</h2>
+                <canvas id="chartTrend"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2>Gastos por Dia</h2>
+                <canvas id="chartSpend"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2>CTR por Dia</h2>
+                <canvas id="chartCTR"></canvas>
+            </div>
+            <div class="chart-card full-width">
+                <h2>Conversoes (Add to Cart, Checkout, Compras)</h2>
+                <canvas id="chartConversions"></canvas>
+            </div>
+        </section>
+
+        <section class="data-table-section">
+            <h2>Dados Detalhados</h2>
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Impressoes</th>
+                            <th>Cliques</th>
+                            <th>Alcance</th>
+                            <th>Total Gasto por Dia</th>
+                            <th>CTR</th>
+                            <th>Finalizacao de Compras</th>
+                            <th>CPA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/dashboard.js?v=10"></script>
+</body>
+</html>
