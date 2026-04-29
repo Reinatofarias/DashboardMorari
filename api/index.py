@@ -1,19 +1,19 @@
-import os
-import sys
+"""
+Facebook Ads Dashboard API for Vercel
+"""
 import json
+import os
 import requests
 from flask import Flask, jsonify, send_file, request
 from flask_cors import CORS
 from datetime import datetime, timedelta
 
-# Setup paths for Vercel
-root = '/var/task' if os.environ.get('VERCEL') else os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 
 CORS(app, resources={r"/api/*": {"origins": ["*"]}}, methods=["GET", "POST"])
 
-# File paths
-BASE_DIR = root
+# Paths - Vercel uses /var/task
+BASE_DIR = '/var/task'
 DATA_FILE = os.path.join(BASE_DIR, 'data', 'facebook_ads_latest.json')
 CONFIG_PATH = os.path.join(BASE_DIR, 'config', 'config.json')
 
@@ -118,7 +118,6 @@ def fetch_data(start=None, end=None):
     except Exception as e:
         return None, str(e)
 
-# Serve dashboard HTML
 @app.route('/')
 def index():
     return send_file(os.path.join(BASE_DIR, 'dashboard', 'dashboard', 'index.html'))

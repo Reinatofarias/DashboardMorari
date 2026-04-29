@@ -1,9 +1,3 @@
-# Arquivos sensíveis
-config/config.json
-
-# Dados gerados
-data/
-
 # Arquivos Python
 __pycache__/
 *.pyc
@@ -35,3 +29,7 @@ build/
 
 # Arquivos batch (específicos do Windows)
 *.bat
+
+# Arquivos dados locais (não versionar)
+# data/ - comente a linha abaixo se quiser versionar os dados
+# data/

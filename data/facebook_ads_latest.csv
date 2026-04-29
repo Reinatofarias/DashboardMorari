@@ -1,0 +1,4 @@
+date_start,date_stop,impressions,clicks,spend,reach,cpc,ctr,cpm,frequency,inline_link_clicks,inline_post_engagement,video_play_actions,add_to_cart,initiate_checkout,add_payment_info,complete_registration,lead,website_purchases,website_purchases_value,roas,cpa,custo_por_resultado,connect_rate,custo_por_initiate_checkout
+2026-04-27,2026-04-27,1678,82,38.95,1343,0.475,4.88677,23.212157,1.249442,62,63,0,0,0,0,0,0,0,0,0,0,0,75.61,0
+2026-04-28,2026-04-28,2695,129,64.19,2090,0.497597,4.786642,23.818182,1.289474,101,105,"[{'action_type': 'video_view', 'value': '5'}]",0,0,0,0,0,0,0,0,0,0,78.29,0
+2026-04-29,2026-04-29,475,32,16.91,406,0.528438,6.736842,35.6,1.169951,25,26,0,0,0,0,0,0,0,0,0,0,0,78.12,0
