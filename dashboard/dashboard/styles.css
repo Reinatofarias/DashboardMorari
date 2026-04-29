@@ -89,7 +89,8 @@ input {
 }
 
 .date-range label,
-.campaign-filter {
+.level-filter,
+.entity-filter {
     display: grid;
     gap: 5px;
     color: var(--muted);
@@ -99,7 +100,8 @@ input {
 }
 
 .date-range input,
-.campaign-filter select {
+.level-filter select,
+.entity-filter select {
     width: 150px;
     height: 40px;
     color: var(--text);
@@ -110,18 +112,24 @@ input {
     outline: none;
 }
 
-.campaign-filter select {
+.level-filter select {
+    width: 190px;
+    cursor: pointer;
+}
+
+.entity-filter select {
     width: min(360px, 34vw);
     cursor: pointer;
 }
 
-.campaign-filter select:disabled {
+.entity-filter select:disabled {
     cursor: not-allowed;
     opacity: 0.62;
 }
 
 .date-range input:focus,
-.campaign-filter select:focus {
+.level-filter select:focus,
+.entity-filter select:focus {
     border-color: var(--border-strong);
 }
 
@@ -223,7 +231,7 @@ input {
 
 .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(11, minmax(0, 1fr));
+    grid-template-columns: repeat(9, minmax(0, 1fr));
     gap: 12px;
     margin-top: 20px;
 }
@@ -322,7 +330,7 @@ input {
 
 table {
     width: 100%;
-    min-width: 1060px;
+    min-width: 1180px;
     border-collapse: collapse;
 }
 
@@ -391,8 +399,10 @@ tbody tr:hover {
     .date-range,
     .date-range label,
     .date-range input,
-    .campaign-filter,
-    .campaign-filter select,
+    .level-filter,
+    .level-filter select,
+    .entity-filter,
+    .entity-filter select,
     .btn-refresh {
         width: 100%;
     }

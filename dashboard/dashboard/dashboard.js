@@ -3,7 +3,8 @@ let spendChart = null;
 let ctrChart = null;
 let conversionsChart = null;
 let dashboardData = [];
-let selectedCampaignId = "";
+let selectedEntityId = "";
+let selectedLevel = "campaign";
 
 const chartColors = {
     gold: "#d9b44a",
@@ -13,6 +14,12 @@ const chartColors = {
     red: "#f87171",
     text: "#d7c27a",
     grid: "rgba(215, 194, 122, 0.12)"
+};
+
+const levelLabels = {
+    campaign: "Campanha",
+    adset: "Conjunto de anuncio",
+    ad: "Anuncio"
 };
 
 function getEl(id) {
@@ -30,10 +37,6 @@ async function requestJson(url, options = {}) {
     return result;
 }
 
-async function fetchCachedData() {
-    return requestJson("/api/data");
-}
-
 function numberValue(value) {
     const num = Number(value);
     return Number.isFinite(num) ? num : 0;
@@ -41,13 +44,6 @@ function numberValue(value) {
 
 function formatNumber(value) {
     return Math.round(numberValue(value)).toLocaleString("pt-BR");
-}
-
-function formatCompactNumber(value) {
-    const num = numberValue(value);
-    if (Math.abs(num) >= 1000000) return (num / 1000000).toFixed(1).replace(".", ",") + "M";
-    if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1).replace(".", ",") + "K";
-    return formatNumber(num);
 }
 
 function formatCurrency(value) {
@@ -61,6 +57,10 @@ function formatCurrency(value) {
 
 function formatPercent(value) {
     return numberValue(value).toFixed(2).replace(".", ",") + "%";
+}
+
+function formatDecimal(value) {
+    return numberValue(value).toFixed(2).replace(".", ",");
 }
 
 function formatDate(dateStr) {
@@ -97,96 +97,96 @@ function setLoading(isLoading) {
     if (loading) loading.style.display = isLoading ? "flex" : "none";
 }
 
-function calculateKPIs(data) {
-    const dailySpend = new Map();
-    const totals = data.reduce(
-        (acc, row) => {
-            const date = row.date_start || "Sem data";
-            acc.impressions += numberValue(row.impressions);
-            acc.clicks += numberValue(row.clicks);
-            acc.reach += numberValue(row.reach);
-            acc.purchases += numberValue(row.website_purchases);
-            acc.spend += numberValue(row.spend);
-            acc.inlineClicks += numberValue(row.inline_link_clicks);
-            dailySpend.set(date, (dailySpend.get(date) || 0) + numberValue(row.spend));
-            return acc;
-        },
-        { impressions: 0, clicks: 0, reach: 0, purchases: 0, spend: 0, inlineClicks: 0 }
-    );
-
-    const ctr = totals.impressions ? (totals.clicks / totals.impressions) * 100 : 0;
-    const cpa = totals.purchases ? totals.spend / totals.purchases : 0;
-    const connectRate = totals.clicks ? (totals.inlineClicks / totals.clicks) * 100 : 0;
-    const activeDays = dailySpend.size;
-    const maxDailySpend = activeDays ? Math.max(...dailySpend.values()) : 0;
-
-    return {
-        impressions: totals.impressions,
-        clicks: totals.clicks,
-        reach: totals.reach,
-        purchases: totals.purchases,
-        cpa,
-        costPerResult: cpa,
-        spend: totals.spend,
-        dailySpend: activeDays ? totals.spend / activeDays : 0,
-        maxDailySpend,
-        ctr,
-        connectRate
-    };
-}
-
-function campaignKey(row) {
+function entityKey(row) {
+    if (selectedLevel === "ad") return row.ad_id || row.ad_name || "";
+    if (selectedLevel === "adset") return row.adset_id || row.adset_name || "";
     return row.campaign_id || row.campaign_name || "";
 }
 
-function campaignLabel(row) {
-    return row.campaign_name || (row.campaign_id ? `Campanha ${row.campaign_id}` : "Sem campanha");
+function entityLabel(row) {
+    if (selectedLevel === "ad") return row.ad_name || row.ad_id || "Sem anuncio";
+    if (selectedLevel === "adset") return row.adset_name || row.adset_id || "Sem conjunto";
+    return row.campaign_name || row.campaign_id || "Sem campanha";
 }
 
 function getFilteredData() {
-    if (!selectedCampaignId) return dashboardData;
-    return dashboardData.filter((row) => campaignKey(row) === selectedCampaignId);
+    if (!selectedEntityId) return dashboardData;
+    return dashboardData.filter((row) => entityKey(row) === selectedEntityId);
 }
 
-function updateCampaignSelect(data) {
-    const select = getEl("campaignSelect");
+function calculateKPIs(data) {
+    const totals = data.reduce(
+        (acc, row) => {
+            acc.impressions += numberValue(row.impressions);
+            acc.clicks += numberValue(row.clicks);
+            acc.spend += numberValue(row.spend);
+            acc.leads += numberValue(row.lead);
+            acc.landingPageViews += numberValue(row.landing_page_views);
+            acc.purchases += numberValue(row.website_purchases);
+            acc.conversionValue += numberValue(row.conversion_value);
+            return acc;
+        },
+        {
+            impressions: 0,
+            clicks: 0,
+            spend: 0,
+            leads: 0,
+            landingPageViews: 0,
+            purchases: 0,
+            conversionValue: 0
+        }
+    );
+
+    return {
+        cpm: totals.impressions ? (totals.spend / totals.impressions) * 1000 : 0,
+        ctr: totals.impressions ? (totals.clicks / totals.impressions) * 100 : 0,
+        cpc: totals.clicks ? totals.spend / totals.clicks : 0,
+        cpl: totals.leads ? totals.spend / totals.leads : 0,
+        costLandingPageView: totals.landingPageViews ? totals.spend / totals.landingPageViews : 0,
+        cpa: totals.purchases ? totals.spend / totals.purchases : 0,
+        roas: totals.spend ? totals.conversionValue / totals.spend : 0,
+        conversionValue: totals.conversionValue,
+        purchases: totals.purchases
+    };
+}
+
+function updateKPIs(kpis) {
+    setText("kpiCPM", formatCurrency(kpis.cpm));
+    setText("kpiCTR", formatPercent(kpis.ctr));
+    setText("kpiCPC", formatCurrency(kpis.cpc));
+    setText("kpiCPL", formatCurrency(kpis.cpl));
+    setText("kpiCostLPV", formatCurrency(kpis.costLandingPageView));
+    setText("kpiCPA", formatCurrency(kpis.cpa));
+    setText("kpiROAS", formatDecimal(kpis.roas));
+    setText("kpiConversionValue", formatCurrency(kpis.conversionValue));
+    setText("kpiPurchases", formatNumber(kpis.purchases));
+}
+
+function updateEntitySelect(data) {
+    const select = getEl("entitySelect");
     if (!select) return;
 
-    const previousValue = select.value || selectedCampaignId;
-    const campaigns = new Map();
+    const previousValue = select.value || selectedEntityId;
+    const entities = new Map();
 
     data.forEach((row) => {
-        const key = campaignKey(row);
-        if (key) campaigns.set(key, campaignLabel(row));
+        const key = entityKey(row);
+        if (key) entities.set(key, entityLabel(row));
     });
 
-    const sortedCampaigns = [...campaigns.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
-    select.innerHTML = '<option value="">Todas as campanhas</option>';
+    const sortedEntities = [...entities.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+    select.innerHTML = `<option value="">Todos os ${levelLabels[selectedLevel].toLowerCase()}s</option>`;
 
-    sortedCampaigns.forEach(([id, name]) => {
+    sortedEntities.forEach(([id, name]) => {
         const option = document.createElement("option");
         option.value = id;
         option.textContent = name;
         select.appendChild(option);
     });
 
-    select.disabled = sortedCampaigns.length === 0;
-    select.value = campaigns.has(previousValue) ? previousValue : "";
-    selectedCampaignId = select.value;
-}
-
-function updateKPIs(kpis) {
-    setText("kpiImpressions", formatCompactNumber(kpis.impressions));
-    setText("kpiClicks", formatCompactNumber(kpis.clicks));
-    setText("kpiReach", formatCompactNumber(kpis.reach));
-    setText("kpiPurchases", formatNumber(kpis.purchases));
-    setText("kpiCPA", formatCurrency(kpis.cpa));
-    setText("kpiCostPerResult", formatCurrency(kpis.costPerResult));
-    setText("kpiSpend", formatCurrency(kpis.spend));
-    setText("kpiDailySpend", formatCurrency(kpis.dailySpend));
-    setText("kpiMaxDailySpend", formatCurrency(kpis.maxDailySpend));
-    setText("kpiCTR", formatPercent(kpis.ctr));
-    setText("kpiConnectRate", formatPercent(kpis.connectRate));
+    select.disabled = sortedEntities.length === 0;
+    select.value = entities.has(previousValue) ? previousValue : "";
+    selectedEntityId = select.value;
 }
 
 function sortedByDate(data, direction = "asc") {
@@ -214,11 +214,7 @@ function baseChartOptions() {
         interaction: { mode: "index", intersect: false },
         plugins: {
             legend: {
-                labels: {
-                    color: chartColors.text,
-                    boxWidth: 12,
-                    usePointStyle: true
-                }
+                labels: { color: chartColors.text, boxWidth: 12, usePointStyle: true }
             },
             tooltip: {
                 backgroundColor: "#111111",
@@ -229,15 +225,8 @@ function baseChartOptions() {
             }
         },
         scales: {
-            x: {
-                ticks: { color: chartColors.text, maxRotation: 0 },
-                grid: { color: chartColors.grid }
-            },
-            y: {
-                beginAtZero: true,
-                ticks: { color: chartColors.text },
-                grid: { color: chartColors.grid }
-            }
+            x: { ticks: { color: chartColors.text, maxRotation: 0 }, grid: { color: chartColors.grid } },
+            y: { beginAtZero: true, ticks: { color: chartColors.text }, grid: { color: chartColors.grid } }
         }
     };
 }
@@ -253,9 +242,8 @@ function aggregateByDate(data) {
                 impressions: 0,
                 clicks: 0,
                 spend: 0,
-                add_to_cart: 0,
-                initiate_checkout: 0,
-                website_purchases: 0
+                purchases: 0,
+                conversion_value: 0
             });
         }
 
@@ -263,9 +251,8 @@ function aggregateByDate(data) {
         current.impressions += numberValue(row.impressions);
         current.clicks += numberValue(row.clicks);
         current.spend += numberValue(row.spend);
-        current.add_to_cart += numberValue(row.add_to_cart);
-        current.initiate_checkout += numberValue(row.initiate_checkout);
-        current.website_purchases += numberValue(row.website_purchases);
+        current.purchases += numberValue(row.website_purchases);
+        current.conversion_value += numberValue(row.conversion_value);
     });
 
     return [...daily.values()]
@@ -283,9 +270,8 @@ function updateCharts(data) {
     const clicks = sorted.map((row) => numberValue(row.clicks));
     const spend = sorted.map((row) => numberValue(row.spend));
     const ctr = sorted.map((row) => numberValue(row.ctr));
-    const addToCart = sorted.map((row) => numberValue(row.add_to_cart));
-    const checkout = sorted.map((row) => numberValue(row.initiate_checkout));
-    const purchases = sorted.map((row) => numberValue(row.website_purchases));
+    const purchases = sorted.map((row) => numberValue(row.purchases));
+    const conversionValue = sorted.map((row) => numberValue(row.conversion_value));
     const options = baseChartOptions();
 
     destroyCharts();
@@ -372,21 +358,15 @@ function updateCharts(data) {
                 labels,
                 datasets: [
                     {
-                        label: "Add to Cart",
-                        data: addToCart,
-                        backgroundColor: "rgba(96, 165, 250, 0.7)",
-                        borderRadius: 5
-                    },
-                    {
-                        label: "Checkout",
-                        data: checkout,
-                        backgroundColor: "rgba(217, 180, 74, 0.72)",
-                        borderRadius: 5
-                    },
-                    {
                         label: "Compras",
                         data: purchases,
                         backgroundColor: "rgba(52, 211, 153, 0.72)",
+                        borderRadius: 5
+                    },
+                    {
+                        label: "Valor de conversao",
+                        data: conversionValue,
+                        backgroundColor: "rgba(96, 165, 250, 0.7)",
                         borderRadius: 5
                     }
                 ]
@@ -405,42 +385,46 @@ function updateTable(data) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${formatDate(row.date_start)}</td>
-            <td title="${campaignLabel(row)}">${campaignLabel(row)}</td>
-            <td>${formatNumber(row.impressions)}</td>
-            <td>${formatNumber(row.clicks)}</td>
-            <td>${formatNumber(row.reach)}</td>
-            <td>${formatCurrency(row.spend)}</td>
+            <td title="${entityLabel(row)}">${entityLabel(row)}</td>
+            <td>${formatCurrency(row.cpm)}</td>
             <td>${formatPercent(row.ctr)}</td>
-            <td>${formatNumber(row.website_purchases)}</td>
+            <td>${formatCurrency(row.cpc)}</td>
+            <td>${formatCurrency(row.cpl)}</td>
+            <td>${formatCurrency(row.cost_per_landing_page_view)}</td>
             <td>${formatCurrency(row.cpa)}</td>
+            <td>${formatDecimal(row.roas)}</td>
+            <td>${formatCurrency(row.conversion_value)}</td>
+            <td>${formatNumber(row.website_purchases)}</td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function renderDashboard(data, sourceMessage) {
-    dashboardData = Array.isArray(data) ? data : [];
-    updateCampaignSelect(dashboardData);
+function renderVisibleData() {
     const visibleData = getFilteredData();
-
-    if (!dashboardData.length) {
-        setStatus("Selecione um periodo e clique em Atualizar Dados para carregar os dados da API.");
-        updateKPIs(calculateKPIs([]));
-        destroyCharts();
-        updateTable([]);
-        return;
-    }
-
     updateKPIs(calculateKPIs(visibleData));
     updateCharts(visibleData);
     updateTable(visibleData);
+}
+
+function renderDashboard(data, sourceMessage) {
+    dashboardData = Array.isArray(data) ? data : [];
+    updateEntitySelect(dashboardData);
+
+    if (!dashboardData.length) {
+        setStatus("Selecione um periodo e clique em Atualizar Dados para carregar os dados da API.");
+        renderVisibleData();
+        return;
+    }
+
+    renderVisibleData();
     setStatus(sourceMessage || "");
     updateLastUpdate();
 }
 
 async function loadDashboard() {
     try {
-        const result = await fetchCachedData();
+        const result = await requestJson("/api/data");
         renderDashboard(result.data || [], result.data && result.data.length ? "" : null);
     } catch (error) {
         setStatus("Erro ao carregar dados: " + error.message, "error");
@@ -460,8 +444,9 @@ async function refreshData() {
     setStatus("Atualizando dados da Meta...");
 
     try {
-        const params = new URLSearchParams({ start_date: startDate, end_date: endDate, level: "campaign" });
+        const params = new URLSearchParams({ start_date: startDate, end_date: endDate, level: selectedLevel });
         const result = await requestJson("/api/update?" + params.toString(), { method: "POST" });
+        selectedEntityId = "";
         renderDashboard(result.data || [], result.message || "Dados atualizados.");
     } catch (error) {
         setStatus("Erro ao atualizar dados: " + error.message, "error");
@@ -487,15 +472,27 @@ function setDefaultDateRange() {
 
 document.addEventListener("DOMContentLoaded", () => {
     setDefaultDateRange();
-    const campaignSelect = getEl("campaignSelect");
-    if (campaignSelect) {
-        campaignSelect.addEventListener("change", () => {
-            selectedCampaignId = campaignSelect.value;
-            const visibleData = getFilteredData();
-            updateKPIs(calculateKPIs(visibleData));
-            updateCharts(visibleData);
-            updateTable(visibleData);
+
+    const levelSelect = getEl("levelSelect");
+    if (levelSelect) {
+        selectedLevel = levelSelect.value;
+        levelSelect.addEventListener("change", () => {
+            selectedLevel = levelSelect.value;
+            selectedEntityId = "";
+            dashboardData = [];
+            updateEntitySelect([]);
+            renderVisibleData();
+            setStatus("Nivel alterado. Clique em Atualizar Dados para carregar os dados.");
         });
     }
+
+    const entitySelect = getEl("entitySelect");
+    if (entitySelect) {
+        entitySelect.addEventListener("change", () => {
+            selectedEntityId = entitySelect.value;
+            renderVisibleData();
+        });
+    }
+
     loadDashboard();
 });

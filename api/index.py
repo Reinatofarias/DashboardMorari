@@ -79,7 +79,7 @@ def action_value(actions, names):
         action_type = str(action.get("action_type", "")).lower()
         if action_type in normalized_names or any(action_type.endswith("." + name) for name in normalized_names):
             total += to_float(action.get("value"))
-    return int(total)
+    return total
 
 
 def roas_value(row):
@@ -91,26 +91,36 @@ def roas_value(row):
 
 def process_row(row):
     actions = row.get("actions", [])
+    action_values = row.get("action_values", [])
     impressions = to_int(row.get("impressions"))
     clicks = to_int(row.get("clicks"))
     spend = to_float(row.get("spend"))
     inline_clicks = to_int(row.get("inline_link_clicks"))
 
     purchases = action_value(actions, ["purchase", "omni_purchase", "fb_pixel_purchase"])
+    purchase_value = action_value(action_values, ["purchase", "omni_purchase", "fb_pixel_purchase"])
     add_to_cart = action_value(actions, ["add_to_cart", "omni_add_to_cart", "fb_pixel_add_to_cart"])
     initiate_checkout = action_value(actions, ["initiate_checkout", "omni_initiated_checkout", "fb_pixel_initiate_checkout"])
     add_payment_info = action_value(actions, ["add_payment_info", "fb_pixel_add_payment_info"])
     complete_registration = action_value(actions, ["complete_registration", "fb_pixel_complete_registration"])
     leads = action_value(actions, ["lead", "onsite_conversion.lead_grouped"])
+    landing_page_views = action_value(actions, ["landing_page_view"])
     video_views = action_value(actions, ["video_view"])
 
     ctr = to_float(row.get("ctr")) or ((clicks / impressions) * 100 if impressions else 0)
     cpa = spend / purchases if purchases else 0
+    cpl = spend / leads if leads else 0
+    cost_per_landing_page_view = spend / landing_page_views if landing_page_views else 0
     connect_rate = (inline_clicks / clicks) * 100 if clicks else 0
+    roas = roas_value(row) or ((purchase_value / spend) if spend and purchase_value else 0)
 
     return {
         "campaign_id": row.get("campaign_id", ""),
         "campaign_name": row.get("campaign_name", "Todas as campanhas"),
+        "adset_id": row.get("adset_id", ""),
+        "adset_name": row.get("adset_name", ""),
+        "ad_id": row.get("ad_id", ""),
+        "ad_name": row.get("ad_name", ""),
         "date_start": row.get("date_start", ""),
         "date_stop": row.get("date_stop", ""),
         "impressions": impressions,
@@ -130,9 +140,13 @@ def process_row(row):
         "add_payment_info": add_payment_info,
         "complete_registration": complete_registration,
         "lead": leads,
+        "landing_page_views": landing_page_views,
         "website_purchases": purchases,
-        "roas": round(roas_value(row), 2),
+        "conversion_value": round(purchase_value, 2),
+        "roas": round(roas, 2),
         "cpa": round(cpa, 2),
+        "cpl": round(cpl, 2),
+        "cost_per_landing_page_view": round(cost_per_landing_page_view, 2),
         "custo_por_resultado": round(cpa, 2),
         "connect_rate": round(connect_rate, 2),
     }
@@ -157,6 +171,10 @@ def fetch_facebook_data(start_date=None, end_date=None, level="campaign"):
             [
                 "campaign_id",
                 "campaign_name",
+                "adset_id",
+                "adset_name",
+                "ad_id",
+                "ad_name",
                 "date_start",
                 "date_stop",
                 "impressions",
@@ -171,6 +189,7 @@ def fetch_facebook_data(start_date=None, end_date=None, level="campaign"):
                 "inline_link_clicks",
                 "inline_post_engagement",
                 "actions",
+                "action_values",
                 "website_purchase_roas",
             ]
         ),
@@ -255,7 +274,7 @@ def update():
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
     level = request.args.get("level", "campaign")
-    if level not in {"account", "campaign"}:
+    if level not in {"account", "campaign", "adset", "ad"}:
         level = "campaign"
 
     data, error = fetch_facebook_data(start_date, end_date, level)
