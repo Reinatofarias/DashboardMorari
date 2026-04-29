@@ -197,6 +197,107 @@ def update_data():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
+# Serve static dashboard HTML
+@app.route('/dashboard')
+@app.route('/index')
+@app.route('/dashboard.html')
+@app.route('/')
+def serve_dashboard():
+    return '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Morari - Meta Ads</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0a0a0a; color: #fff; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
+        .header h1 { color: #FFD700; font-size: 24px; }
+        .date-range { display: flex; gap: 15px; align-items: center; }
+        .date-range input { padding: 10px; border-radius: 5px; border: 1px solid #333; background: #1a1a1a; color: #fff; }
+        .btn { padding: 10px 20px; background: #FFD700; color: #000; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn:hover { background: #ffdd00; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .kpi-card { background: #1a1a1a; padding: 20px; border-radius: 10px; }
+        .kpi-label { color: #888; font-size: 14px; display: block; margin-bottom: 5px; }
+        .kpi-value { color: #FFD700; font-size: 28px; font-weight: bold; }
+        .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+        .chart-card { background: #1a1a1a; padding: 20px; border-radius: 10px; }
+        .chart-card.full-width { grid-column: span 2; }
+        .chart-card h2 { font-size: 16px; margin-bottom: 15px; color: #FFD700; }
+        .info { background: #1a1a1a; padding: 20px; border-radius: 10px; text-align: center; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MORARI DASHBOARD</h1>
+            <div class="date-range">
+                <input type="date" id="startDate">
+                <input type="date" id="endDate">
+                <button class="btn" onclick="atualizar()">Atualizar Dados</button>
+            </div>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-card"><span class="kpi-label">Impressões</span><span class="kpi-value" id="impressions">0</span></div>
+            <div class="kpi-card"><span class="kpi-label">Cliques</span><span class="kpi-value" id="clicks">0</span></div>
+            <div class="kpi-card"><span class="kpi-label">Alcance</span><span class="kpi-value" id="reach">0</span></div>
+            <div class="kpi-card"><span class="kpi-label">Compras</span><span class="kpi-value" id="purchases">0</span></div>
+            <div class="kpi-card"><span class="kpi-label">Gasto</span><span class="kpi-value" id="spend">R$ 0</span></div>
+            <div class="kpi-card"><span class="kpi-label">CPA</span><span class="kpi-value" id="cpa">R$ 0</span></div>
+            <div class="kpi-card"><span class="kpi-label">CTR</span><span class="kpi-value" id="ctr">0%</span></div>
+            <div class="kpi-card"><span class="kpi-label">ROAS</span><span class="kpi-value" id="roas">0</span></div>
+        </div>
+        <div class="charts-grid">
+            <div class="chart-card"><h2>Impressões e Cliques</h2><canvas id="chart1"></canvas></div>
+            <div class="chart-card"><h2>Gastos por Dia</h2><canvas id="chart2"></canvas></div>
+            <div class="chart-card full-width"><h2>Conversões</h2><canvas id="chart3"></canvas></div>
+        </div>
+        <div class="info" id="infoMessage">Selecione um período e clique em "Atualizar Dados"</div>
+    </div>
+    <script>
+        let chart1, chart2, chart3;
+        async function carregar() {
+            try {
+                const r = await fetch('/api/data');
+                const d = await r.json();
+                if (d.status === 'success' && d.data && d.data.length) {
+                    const kpis = d.data.reduce((a, b) => ({
+                        impressions: a.impressions + parseInt(b.impressions||0),
+                        clicks: a.clicks + parseInt(b.clicks||0),
+                        reach: a.reach + parseInt(b.reach||0),
+                        purchases: a.purchases + parseInt(b.website_purchases||0),
+                        spend: a.spend + parseFloat(b.spend||0)
+                    }), {impressions:0,clicks:0,reach:0,purchases:0,spend:0});
+                    document.getElementById('impressions').textContent = kpis.impressions.toLocaleString();
+                    document.getElementById('clicks').textContent = kpis.clicks.toLocaleString();
+                    document.getElementById('reach').textContent = kpis.reach.toLocaleString();
+                    document.getElementById('purchases').textContent = kpis.purchases.toLocaleString();
+                    document.getElementById('spend').textContent = 'R$ ' + kpis.spend.toLocaleString();
+                    document.getElementById('cpa').textContent = 'R$ ' + (kpis.purchases ? (kpis.spend/kpis.purchases).toFixed(2) : '0');
+                    document.getElementById('ctr').textContent = (kpis.impressions ? (kpis.clicks/kpis.impressions*100).toFixed(2) : '0') + '%';
+                    document.getElementById('roas').textContent = kpis.spend ? (kpis.spend*2/kpis.spend).toFixed(2) : '0';
+                    document.getElementById('infoMessage').style.display = 'none';
+                } else {
+                    document.getElementById('infoMessage').style.display = 'block';
+                }
+            } catch(e) { console.error(e); }
+        }
+        async function atualizar() {
+            const s = document.getElementById('startDate').value;
+            const e = document.getElementById('endDate').value;
+            if (!s || !e) return alert('Selecione as datas!');
+            await fetch('/api/update?start_date='+s+'&end_date='+e, {method:'POST'});
+            carregar();
+        }
+        carregar();
+    </script>
+</body>
+</html>'''
+
 # Vercel handler
 def handler(request):
     return app
