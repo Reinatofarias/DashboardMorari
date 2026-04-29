@@ -3,14 +3,41 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python",
-      "output": "api"
+      "use": "@vercel/python"
+    },
+    {
+      "src": "config/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "data/**", 
+      "use": "@vercel/static"
+    },
+    {
+      "src": "dashboard/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/config/(.*)",
+      "dest": "/config/$1"
+    },
+    {
+      "src": "/data/(.*)", 
+      "dest": "/data/$1"
+    },
+    {
+      "src": "/api/(.*)",
       "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dashboard/dashboard/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/dashboard/dashboard/index.html"
     }
   ]
 }
