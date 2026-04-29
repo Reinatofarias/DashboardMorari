@@ -1,13 +1,15 @@
-import os
 import sys
+import os
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add scripts folder to Python path  
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scripts'))
 
-# Set BASE_DIR for Vercel environment
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Set working directory for file paths
+os.chdir(os.path.join(os.path.dirname(__file__), 'scripts'))
 
-from server import app as flask_app
+# Import the Flask app
+from server import app
 
+# Vercel requires returning the app directly
 def handler(request):
-    return flask_app
+    return app

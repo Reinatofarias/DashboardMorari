@@ -1,12 +1,18 @@
+import os
+
+# Handle both local and Vercel environments
+if os.environ.get('VERCEL'):
+    BASE_DIR = '/var/task'
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CONFIG_PATH = os.path.join(BASE_DIR, 'config', 'config.json')
+
 from flask import Flask, jsonify, send_file, request
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import json
-import os
 import requests
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(BASE_DIR, 'config', 'config.json')
 
 app = Flask(__name__)
 
