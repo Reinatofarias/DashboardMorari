@@ -98,14 +98,17 @@ function setLoading(isLoading) {
 }
 
 function calculateKPIs(data) {
+    const dailySpend = new Map();
     const totals = data.reduce(
         (acc, row) => {
+            const date = row.date_start || "Sem data";
             acc.impressions += numberValue(row.impressions);
             acc.clicks += numberValue(row.clicks);
             acc.reach += numberValue(row.reach);
             acc.purchases += numberValue(row.website_purchases);
             acc.spend += numberValue(row.spend);
             acc.inlineClicks += numberValue(row.inline_link_clicks);
+            dailySpend.set(date, (dailySpend.get(date) || 0) + numberValue(row.spend));
             return acc;
         },
         { impressions: 0, clicks: 0, reach: 0, purchases: 0, spend: 0, inlineClicks: 0 }
@@ -114,6 +117,8 @@ function calculateKPIs(data) {
     const ctr = totals.impressions ? (totals.clicks / totals.impressions) * 100 : 0;
     const cpa = totals.purchases ? totals.spend / totals.purchases : 0;
     const connectRate = totals.clicks ? (totals.inlineClicks / totals.clicks) * 100 : 0;
+    const activeDays = dailySpend.size;
+    const maxDailySpend = activeDays ? Math.max(...dailySpend.values()) : 0;
 
     return {
         impressions: totals.impressions,
@@ -123,6 +128,8 @@ function calculateKPIs(data) {
         cpa,
         costPerResult: cpa,
         spend: totals.spend,
+        dailySpend: activeDays ? totals.spend / activeDays : 0,
+        maxDailySpend,
         ctr,
         connectRate
     };
@@ -176,6 +183,8 @@ function updateKPIs(kpis) {
     setText("kpiCPA", formatCurrency(kpis.cpa));
     setText("kpiCostPerResult", formatCurrency(kpis.costPerResult));
     setText("kpiSpend", formatCurrency(kpis.spend));
+    setText("kpiDailySpend", formatCurrency(kpis.dailySpend));
+    setText("kpiMaxDailySpend", formatCurrency(kpis.maxDailySpend));
     setText("kpiCTR", formatPercent(kpis.ctr));
     setText("kpiConnectRate", formatPercent(kpis.connectRate));
 }
@@ -233,8 +242,42 @@ function baseChartOptions() {
     };
 }
 
+function aggregateByDate(data) {
+    const daily = new Map();
+
+    data.forEach((row) => {
+        const date = row.date_start || "";
+        if (!daily.has(date)) {
+            daily.set(date, {
+                date_start: date,
+                impressions: 0,
+                clicks: 0,
+                spend: 0,
+                add_to_cart: 0,
+                initiate_checkout: 0,
+                website_purchases: 0
+            });
+        }
+
+        const current = daily.get(date);
+        current.impressions += numberValue(row.impressions);
+        current.clicks += numberValue(row.clicks);
+        current.spend += numberValue(row.spend);
+        current.add_to_cart += numberValue(row.add_to_cart);
+        current.initiate_checkout += numberValue(row.initiate_checkout);
+        current.website_purchases += numberValue(row.website_purchases);
+    });
+
+    return [...daily.values()]
+        .map((row) => ({
+            ...row,
+            ctr: row.impressions ? (row.clicks / row.impressions) * 100 : 0
+        }))
+        .sort((a, b) => new Date(a.date_start || 0) - new Date(b.date_start || 0));
+}
+
 function updateCharts(data) {
-    const sorted = sortedByDate(data);
+    const sorted = aggregateByDate(data);
     const labels = sorted.map((row) => formatDate(row.date_start).slice(0, 5));
     const impressions = sorted.map((row) => numberValue(row.impressions));
     const clicks = sorted.map((row) => numberValue(row.clicks));

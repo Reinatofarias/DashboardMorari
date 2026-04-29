@@ -4,7 +4,7 @@ Dashboard para analise de campanhas do Meta Ads, com backend Flask, frontend HTM
 
 ## Funcionalidades
 
-- KPIs principais: Impressoes, Cliques, Alcance, Finalizacao de Compras, CPA, Custo por Resultado, Valor Usado, CTR e Connect Rate.
+- KPIs principais: Impressoes, Cliques, Alcance, Finalizacao de Compras, CPA, Custo por Resultado, Valor Usado Total, Media por Dia, Maior Gasto Diario, CTR e Connect Rate.
 - Graficos interativos com Chart.js.
 - Tabela diaria com os dados retornados pela API.
 - Filtro por campanha quando os dados sao atualizados em nivel de campanha.
