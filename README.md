@@ -23,31 +23,26 @@ Dashboard profissional para análise de campanhas do Meta Ads (Facebook/Instagra
 
 1. Clone o repositório:
    ```bash
-   git clone https://github.com/seu-usuario/morari-project-dashboard.git
-   cd morari-project-dashboard
+   git clone https://github.com/Reinatofarias/DashboardMorari.git
+   cd DashboardMorari
    ```
 
-2. Instale as dependências:
-   ```bash
-   pip install -r scripts/requirements.txt
-   ```
-
-3. Configure suas credenciais do Meta Ads:
+2. Configure suas credenciais do Meta Ads:
    - Copie `config/config.example.json` para `config/config.json`
    - Preencha com seus dados reais (App ID, App Secret, Access Token, Ad Account ID)
 
-4. Execute o servidor:
+3. Execute o servidor:
    ```bash
    cd scripts
    python server.py
    ```
 
-5. Acesse no navegador:
+4. Acesse no navegador:
    - http://localhost:5000
 
 ## Deploy no Vercel
 
-1. Faça push do projeto para o GitHub
+1. Faça push do projeto para o GitHub (branch main)
 2. No [Vercel](https://vercel.com), importe o repositório
 3. Configure as variáveis de ambiente (ou use o arquivo config.json)
 4. Deploy automático!
@@ -74,7 +69,7 @@ PowerBI - META/
 
 ## Observações
 
-- O token de acesso do Meta Ads expira após 2 horas. Gere um novo em: https://developers.facebook.com/tools/explorer/
+- O token de acesso do Meta Ads expira. Gere um novo em: https://developers.facebook.com/tools/explorer/
 - Certifique-se de não comitar o arquivo `config.json` com dados reais
 - O projeto foi desenvolvido para ser executado localmente ou em servidor Python (Vercel)
 
