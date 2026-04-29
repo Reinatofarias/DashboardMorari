@@ -1,78 +1,73 @@
 # MORARI PROJECT DASHBOARD
 
-Dashboard profissional para análise de campanhas do Meta Ads (Facebook/Instagram) com design darkmode em preto e dourado.
+Dashboard para analise de campanhas do Meta Ads, com backend Flask, frontend HTML/CSS/JavaScript e deploy preparado para Vercel.
 
 ## Funcionalidades
 
-- ✅ **KPIs Principais**: Impressões, Cliques, Alcance, Finalização de Compras, CPA, Custo por Resultado, Valor Usado, CTR, Connect Rate
-- ✅ **Gráficos Interativos**: Tendência de impressões/cliques, Gastos por dia, CTR por dia, Conversões
-- ✅ **Tabela Detalhada** com dados diários formatados
-- ✅ **Seletor de Período** - Consulte dados específicos via API do Meta
-- ✅ **Botão Atualizar Dados** - Puxa dados reais da API diretamente no dashboard
-- ✅ **Design Responsivo** - Adapta-se a qualquer tamanho de tela
-- ✅ **Darkmode Elegante** - Preto com detalhes em dourado
+- KPIs principais: Impressoes, Cliques, Alcance, Finalizacao de Compras, CPA, Custo por Resultado, Valor Usado, CTR e Connect Rate.
+- Graficos interativos com Chart.js.
+- Tabela diaria com os dados retornados pela API.
+- Seletor de periodo para consultar a Meta Ads API.
+- Atualizacao direta pelo dashboard.
+- Layout responsivo em dark mode.
 
-## Tecnologias Utilizadas
+## Como rodar localmente
 
-- **Backend**: Python (Flask)
-- **Frontend**: HTML5, CSS3, JavaScript (Chart.js)
-- **API**: Meta Ads Graph API v18.0
-- **Deploy**: Vercel (Python Runtime)
+1. Instale as dependencias:
 
-## Como Executar Localmente
+```bash
+pip install -r requirements.txt
+```
 
-1. Clone o repositório:
-   ```bash
-   git clone https://github.com/Reinatofarias/DashboardMorari.git
-   cd DashboardMorari
-   ```
+2. Configure `config/config.json` com suas credenciais locais:
 
-2. Configure suas credenciais do Meta Ads:
-   - Copie `config/config.example.json` para `config/config.json`
-   - Preencha com seus dados reais (App ID, App Secret, Access Token, Ad Account ID)
+```json
+{
+  "facebook": {
+    "app_id": "SEU_APP_ID",
+    "app_secret": "SEU_APP_SECRET",
+    "access_token": "SEU_ACCESS_TOKEN",
+    "ad_account_id": "SEU_AD_ACCOUNT_ID"
+  }
+}
+```
 
-3. Execute o servidor:
-   ```bash
-   cd scripts
-   python server.py
-   ```
+3. Inicie o servidor:
 
-4. Acesse no navegador:
-   - http://localhost:5000
+```bash
+python scripts/server.py
+```
+
+4. Acesse:
+
+```text
+http://localhost:5000
+```
 
 ## Deploy no Vercel
 
-1. Faça push do projeto para o GitHub (branch main)
-2. No [Vercel](https://vercel.com), importe o repositório
-3. Configure as variáveis de ambiente (ou use o arquivo config.json)
-4. Deploy automático!
+No Vercel, configure estas variaveis de ambiente no projeto:
 
-## Estrutura do Projeto
-
-```
-PowerBI - META/
-├── config/
-│   ├── config.json (ignorado no git)
-│   └── config.example.json
-├── scripts/
-│   ├── server.py (Flask backend)
-│   ├── facebook_ads_extractor.py (Extrator da API)
-│   └── requirements.txt
-├── dashboard/
-│   └── dashboard/
-│       ├── index.html
-│       ├── styles.css
-│       └── dashboard.js
-├── data/ (ignorado no git)
-└── README.md
+```text
+FB_ACCESS_TOKEN=seu_token_da_meta
+FB_AD_ACCOUNT_ID=id_da_conta_sem_act_
+META_GRAPH_VERSION=v18.0
 ```
 
-## Observações
+`META_GRAPH_VERSION` e opcional. O dashboard usa `v18.0` por padrao.
 
-- O token de acesso do Meta Ads expira. Gere um novo em: https://developers.facebook.com/tools/explorer/
-- Certifique-se de não comitar o arquivo `config.json` com dados reais
-- O projeto foi desenvolvido para ser executado localmente ou em servidor Python (Vercel)
+Depois, faca push para o GitHub e deixe o Vercel executar o deploy com o `vercel.json` existente.
 
-## Licença
+## Rotas
 
-MIT
+- `/` - Dashboard principal.
+- `/config-token` - Tela auxiliar para token local.
+- `/api/data` - Dados locais/cacheados.
+- `/api/update?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` - Consulta a API da Meta e retorna os dados atualizados.
+- `/api/config` - Status de configuracao.
+
+## Observacoes
+
+- Nao versionar `config/config.json` com token real.
+- Em producao, use variaveis de ambiente no Vercel.
+- O arquivo `data/facebook_ads_latest.json` e apenas cache local; no Vercel a atualizacao retorna os dados diretamente para o frontend.

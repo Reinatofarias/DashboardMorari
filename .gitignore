@@ -1,35 +1,30 @@
-# Arquivos Python
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
 .Python/
-
-# Ambiente virtual
-venv/
-env/
-
-# Arquivos do sistema
-.DS_Store
-Thumbs.db
-
-# Arquivos de build
 *.egg-info/
 dist/
 build/
 
-# Arquivos de IDE
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Local credentials and generated data
+config/config.json
+data/
+*.log
+
+# System and editor files
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs
-*.log
-
-# Arquivos batch (específicos do Windows)
+# Local Windows helpers
 *.bat
-
-# Arquivos dados locais (não versionar)
-# data/ - comente a linha abaixo se quiser versionar os dados
-# data/

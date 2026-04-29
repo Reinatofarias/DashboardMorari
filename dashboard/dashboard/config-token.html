@@ -5,84 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurar Token - PowerBI META</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #1a1a1a; color: #fff; }
-        h1 { color: #FFD700; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; }
-        input { background: #333; color: #fff; }
-        button { background: #FFD700; color: #000; font-weight: bold; cursor: pointer; }
-        .info { background: #333; padding: 15px; border-radius: 5px; margin: 15px 0; }
-        .erro { background: #c00; padding: 10px; border-radius: 5px; display: none; }
-        .sucesso { background: #0a0; padding: 10px; border-radius: 5px; display: none; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #070707;
+            color: #f6f0db;
+            font-family: Arial, sans-serif;
+        }
+        main {
+            width: min(620px, calc(100% - 32px));
+            background: #111111;
+            border: 1px solid rgba(217, 180, 74, 0.35);
+            border-radius: 8px;
+            padding: 28px;
+        }
+        h1 { margin-top: 0; color: #ffd66b; }
+        label { display: block; margin-top: 18px; color: #b8a86a; font-weight: 700; }
+        input, button {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            border-radius: 8px;
+            font: inherit;
+        }
+        input {
+            color: #ffffff;
+            background: #1b1b1b;
+            border: 1px solid rgba(217, 180, 74, 0.35);
+            padding: 0 12px;
+        }
+        button {
+            margin-top: 16px;
+            color: #090909;
+            background: linear-gradient(135deg, #ffd66b, #d9b44a);
+            border: 0;
+            cursor: pointer;
+            font-weight: 800;
+        }
+        .box {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 8px;
+            background: rgba(217, 180, 74, 0.1);
+            border: 1px solid rgba(217, 180, 74, 0.25);
+        }
+        .error { color: #ffe0e0; background: rgba(248, 113, 113, 0.14); border-color: rgba(248, 113, 113, 0.45); }
+        .success { color: #dcfce7; background: rgba(52, 211, 153, 0.12); border-color: rgba(52, 211, 153, 0.45); }
+        a { color: #ffd66b; }
+        code { color: #ffd66b; }
     </style>
 </head>
 <body>
-    <h1>⚙️ Configurar Token</h1>
-    
-    <div class="info" id="tokenInfo">Carregando...</div>
-    
-    <p>Novo Token:</p>
-    <input type="text" id="novoToken" placeholder="Cole o token aqui...">
-    <button onclick="salvarToken()">Salvar Token</button>
-    
-    <div class="erro" id="erro"></div>
-    <div class="sucesso" id="sucesso"></div>
-    
-    <p style="margin-top: 30px; color: #888; font-size: 12px;">
-        Gere um novo token em: <a href="https://developers.facebook.com/tools/explorer/" target="_blank" style="color: #FFD700;">Graph API Explorer</a>
-    </p>
+    <main>
+        <h1>Configurar Token</h1>
+        <div class="box" id="tokenInfo">Carregando...</div>
+
+        <label for="novoToken">Novo token local</label>
+        <input type="text" id="novoToken" placeholder="Cole o token aqui">
+        <button type="button" onclick="salvarToken()">Salvar Token</button>
+
+        <div class="box error" id="erro" style="display: none;"></div>
+        <div class="box success" id="sucesso" style="display: none;"></div>
+
+        <div class="box">
+            No Vercel, configure <code>FB_ACCESS_TOKEN</code> e <code>FB_AD_ACCOUNT_ID</code> nas variaveis de ambiente do projeto.
+            Gere tokens no <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer">Graph API Explorer</a>.
+        </div>
+    </main>
 
     <script>
         async function carregarInfo() {
             try {
-                const res = await fetch('/api/config');
+                const res = await fetch("/api/config");
                 const data = await res.json();
-                const info = document.getElementById('tokenInfo');
-                
-                if (data.token && data.token.expires_at) {
-                    const exp = new Date(data.token.expires_at);
-                    info.innerHTML = `
-                        <strong>Status:</strong> Token ativo<br>
-                        <strong>Expira em:</strong> ${exp.toLocaleDateString('pt-BR')}
-                    `;
+                const info = document.getElementById("tokenInfo");
+
+                if (data.configured) {
+                    const expiresAt = data.expires_at ? new Date(data.expires_at).toLocaleDateString("pt-BR") : "Nao informado";
+                    info.innerHTML = `<strong>Status:</strong> configurado<br><strong>Conta:</strong> ${data.ad_account_id || "--"}<br><strong>Expira em:</strong> ${expiresAt}`;
                 } else {
-                    info.innerHTML = '<strong style="color: #c00;">Token não configurado!</strong>';
+                    info.innerHTML = "<strong>Status:</strong> token ou conta de anuncios nao configurados.";
                 }
-            } catch (e) {
-                document.getElementById('tokenInfo').innerHTML = 'Erro ao carregar: ' + e.message;
+            } catch (error) {
+                document.getElementById("tokenInfo").textContent = "Erro ao carregar: " + error.message;
             }
         }
-        
+
         async function salvarToken() {
-            const token = document.getElementById('novoToken').value.trim();
+            const token = document.getElementById("novoToken").value.trim();
+            const erro = document.getElementById("erro");
+            const sucesso = document.getElementById("sucesso");
+
+            erro.style.display = "none";
+            sucesso.style.display = "none";
+
             if (!token) {
-                document.getElementById('erro').style.display = 'block';
-                document.getElementById('erro').textContent = 'Cole um token válido!';
+                erro.style.display = "block";
+                erro.textContent = "Cole um token valido.";
                 return;
             }
-            
+
             try {
-                const res = await fetch('/api/salvar-token', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({token: token})
+                const res = await fetch("/api/salvar-token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token })
                 });
                 const data = await res.json();
-                
-                if (data.status === 'success') {
-                    document.getElementById('sucesso').style.display = 'block';
-                    document.getElementById('sucesso').textContent = 'Token salvo com sucesso!';
-                    document.getElementById('erro').style.display = 'none';
-                    carregarInfo();
-                } else {
-                    document.getElementById('erro').style.display = 'block';
-                    document.getElementById('erro').textContent = data.message;
+
+                if (data.status !== "success") {
+                    throw new Error(data.message || "Erro ao salvar token.");
                 }
-            } catch (e) {
-                document.getElementById('erro').style.display = 'block';
-                document.getElementById('erro').textContent = 'Erro: ' + e.message;
+
+                sucesso.style.display = "block";
+                sucesso.textContent = "Token salvo com sucesso.";
+                carregarInfo();
+            } catch (error) {
+                erro.style.display = "block";
+                erro.textContent = error.message;
             }
         }
-        
+
         carregarInfo();
     </script>
 </body>

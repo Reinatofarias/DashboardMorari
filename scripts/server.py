@@ -1,220 +1,300 @@
-import os
-
-# Handle both local and Vercel environments
-if os.environ.get('VERCEL'):
-    BASE_DIR = '/var/task'
-else:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-CONFIG_PATH = os.path.join(BASE_DIR, 'config', 'config.json')
-
-from flask import Flask, jsonify, send_file, request
-from flask_cors import CORS
-from datetime import datetime, timedelta
 import json
+import os
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import requests
+from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
 
-app = Flask(__name__)
 
-CORS(app, resources={
-    r"/api/*": {"origins": ["*"]}
-}, methods=["GET", "POST"], headers=["Content-Type"])
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DASHBOARD_DIR = ROOT_DIR / "dashboard" / "dashboard"
+CONFIG_PATH = ROOT_DIR / "config" / "config.json"
+DATA_FILE = ROOT_DIR / "data" / "facebook_ads_latest.json"
+GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v18.0")
+
+app = Flask(__name__, static_folder=None)
+CORS(app, resources={r"/api/*": {"origins": ["*"]}}, methods=["GET", "POST"])
+
 
 @app.after_request
 def add_security_headers(response):
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Cache-Control"] = "no-store"
     return response
 
-DATA_FILE = os.path.join(BASE_DIR, 'data', 'facebook_ads_latest.json')
 
-def load_json_data():
-    try:
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            if isinstance(data, list):
-                return {'status': 'success', 'data': data}
-            return data
-    except FileNotFoundError:
-        return {'status': 'error', 'message': 'Arquivo de dados nao encontrado.'}
-    except Exception as e:
-        return {'status': 'error', 'message': str(e)}
+def json_response(status, message=None, data=None, http_status=200, **extra):
+    payload = {"status": status}
+    if message:
+        payload["message"] = message
+    if data is not None:
+        payload["data"] = data
+    payload.update(extra)
+    return jsonify(payload), http_status
+
 
 def load_config():
-    with open(CONFIG_PATH, 'r') as f:
-        return json.load(f)
+    with CONFIG_PATH.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
 
 def save_config(config):
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(config, f, indent=4)
+    with CONFIG_PATH.open("w", encoding="utf-8") as file:
+        json.dump(config, file, indent=4, ensure_ascii=False)
 
-def is_token_valid(token):
-    if not token:
-        return False
-    url = "https://graph.facebook.com/v18.0/me"
-    params = {"access_token": token}
-    try:
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
-        return "id" in data
-    except:
-        return False
 
-def extract_purchases(actions):
-    if not actions:
-        return 0
-    for action in actions:
-        if action.get("action_type") == "purchase":
-            return int(float(action.get("value", 0)))
-    return 0
-
-def calculate_metrics(row):
-    spend = float(row.get("spend", 0))
-    clicks = float(row.get("clicks", 0))
-    impressions = float(row.get("impressions", 0))
-    inline_clicks = float(row.get("inline_link_clicks", 0))
-    init_checkouts = float(row.get("initiate_checkout", 0))
-    purchases = float(row.get("website_purchases", 0))
-    
-    roas = 0
-    if "website_purchase_roas" in row and row["website_purchase_roas"]:
-        if isinstance(row["website_purchase_roas"], list) and len(row["website_purchase_roas"]) > 0:
-            roas = float(row["website_purchase_roas"][0].get("value", 0))
-    
+def get_facebook_config():
+    config = load_config()
+    facebook = config.get("facebook", {})
     return {
-        "cpa": round(spend / purchases, 2) if purchases > 0 else 0,
-        "roas": roas,
-        "ctr": round((clicks / impressions) * 100, 2) if impressions > 0 else 0,
-        "connect_rate": round((inline_clicks / clicks) * 100, 2) if clicks > 0 else 0
+        "access_token": os.environ.get("FB_ACCESS_TOKEN", facebook.get("access_token", "")).strip(),
+        "ad_account_id": os.environ.get("FB_AD_ACCOUNT_ID", facebook.get("ad_account_id", "")).strip(),
+        "token": config.get("token", {}),
     }
 
+
+def token_valid(token):
+    if not token:
+        return False
+    try:
+        response = requests.get(
+            f"https://graph.facebook.com/{GRAPH_VERSION}/me",
+            params={"access_token": token},
+            timeout=10,
+        )
+        body = response.json()
+        return response.ok and "id" in body
+    except requests.RequestException:
+        return False
+
+
+def to_float(value):
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def to_int(value):
+    return int(to_float(value))
+
+
+def action_value(actions, names):
+    if not actions:
+        return 0
+
+    normalized_names = {name.lower() for name in names}
+    total = 0
+    for action in actions:
+        action_type = str(action.get("action_type", "")).lower()
+        if action_type in normalized_names or any(action_type.endswith("." + name) for name in normalized_names):
+            total += to_float(action.get("value"))
+    return int(total)
+
+
+def roas_value(row):
+    roas = row.get("website_purchase_roas")
+    if isinstance(roas, list) and roas:
+        return to_float(roas[0].get("value"))
+    return to_float(roas)
+
+
+def process_row(row):
+    actions = row.get("actions", [])
+    impressions = to_int(row.get("impressions"))
+    clicks = to_int(row.get("clicks"))
+    spend = to_float(row.get("spend"))
+    inline_clicks = to_int(row.get("inline_link_clicks"))
+
+    purchases = action_value(actions, ["purchase", "omni_purchase", "fb_pixel_purchase"])
+    add_to_cart = action_value(actions, ["add_to_cart", "omni_add_to_cart", "fb_pixel_add_to_cart"])
+    initiate_checkout = action_value(actions, ["initiate_checkout", "omni_initiated_checkout", "fb_pixel_initiate_checkout"])
+    add_payment_info = action_value(actions, ["add_payment_info", "fb_pixel_add_payment_info"])
+    complete_registration = action_value(actions, ["complete_registration", "fb_pixel_complete_registration"])
+    leads = action_value(actions, ["lead", "onsite_conversion.lead_grouped"])
+    video_views = action_value(actions, ["video_view"])
+
+    ctr = to_float(row.get("ctr")) or ((clicks / impressions) * 100 if impressions else 0)
+    cpa = spend / purchases if purchases else 0
+    connect_rate = (inline_clicks / clicks) * 100 if clicks else 0
+
+    return {
+        "date_start": row.get("date_start", ""),
+        "date_stop": row.get("date_stop", ""),
+        "impressions": impressions,
+        "clicks": clicks,
+        "spend": round(spend, 2),
+        "reach": to_int(row.get("reach")),
+        "cpc": round(to_float(row.get("cpc")), 2),
+        "ctr": round(ctr, 2),
+        "cpm": round(to_float(row.get("cpm")), 2),
+        "cpp": round(to_float(row.get("cpp")), 2),
+        "frequency": round(to_float(row.get("frequency")), 2),
+        "inline_link_clicks": inline_clicks,
+        "inline_post_engagement": to_int(row.get("inline_post_engagement")),
+        "video_views": video_views,
+        "add_to_cart": add_to_cart,
+        "initiate_checkout": initiate_checkout,
+        "add_payment_info": add_payment_info,
+        "complete_registration": complete_registration,
+        "lead": leads,
+        "website_purchases": purchases,
+        "roas": round(roas_value(row), 2),
+        "cpa": round(cpa, 2),
+        "custo_por_resultado": round(cpa, 2),
+        "connect_rate": round(connect_rate, 2),
+    }
+
+
 def fetch_facebook_data(start_date=None, end_date=None):
-    config = load_config()
-    token = config["facebook"]["access_token"]
-    account_id = config["facebook"]["ad_account_id"]
-    
-    if not is_token_valid(token):
-        return None, "Token invalido!"
-    
-    url = f"https://graph.facebook.com/v18.0/act_{account_id}/insights"
+    config = get_facebook_config()
+    token = config["access_token"]
+    account_id = config["ad_account_id"].replace("act_", "")
+
+    if not token:
+        return None, "Token nao configurado."
+    if not account_id:
+        return None, "Ad Account ID nao configurado."
+    if not token_valid(token):
+        return None, "Token invalido ou expirado."
+
     params = {
         "access_token": token,
         "level": "account",
-        "fields": "impressions,clicks,spend,reach,cpc,ctr,cpm,frequency,inline_link_clicks,inline_post_engagement,video_play_actions,website_purchase_roas,add_to_cart,initiate_checkout,add_payment_info,complete_registration,lead,actions",
-        "limit": 500
+        "fields": ",".join(
+            [
+                "date_start",
+                "date_stop",
+                "impressions",
+                "clicks",
+                "spend",
+                "reach",
+                "cpc",
+                "ctr",
+                "cpm",
+                "cpp",
+                "frequency",
+                "inline_link_clicks",
+                "inline_post_engagement",
+                "actions",
+                "website_purchase_roas",
+            ]
+        ),
+        "limit": 500,
+        "time_increment": 1,
     }
-    
+
     if start_date and end_date:
         params["time_range"] = json.dumps({"since": start_date, "until": end_date})
     else:
         params["date_preset"] = "last_30d"
-    
-    params["time_increment"] = 1
-    
-    try:
-        response = requests.get(url, params=params, timeout=30)
-        data = response.json()
-        
-        if "error" in data:
-            return None, data['error'].get('message', 'Erro API')
-        
-        insights = data.get("data", [])
-        processed = []
-        
-        for row in insights:
-            calc = calculate_metrics(row)
-            purchases = extract_purchases(row.get("actions", []))
-            
-            processed.append({
-                "date_start": row.get("date_start", ""),
-                "date_stop": row.get("date_stop", ""),
-                "impressions": row.get("impressions", 0),
-                "clicks": row.get("clicks", 0),
-                "spend": row.get("spend", 0),
-                "reach": row.get("reach", 0),
-                "cpc": row.get("cpc", 0),
-                "ctr": row.get("ctr", 0),
-                "cpm": row.get("cpm", 0),
-                "frequency": row.get("frequency", 0),
-                "inline_link_clicks": row.get("inline_link_clicks", 0),
-                "add_to_cart": row.get("add_to_cart", 0),
-                "initiate_checkout": row.get("initiate_checkout", 0),
-                "website_purchases": purchases,
-                "roas": calc.get("roas", 0),
-                "cpa": calc.get("cpa", 0),
-                "connect_rate": calc.get("connect_rate", 0)
-            })
-        
-        return processed, None
-    except Exception as e:
-        return None, str(e)
 
-@app.route('/')
+    try:
+        response = requests.get(
+            f"https://graph.facebook.com/{GRAPH_VERSION}/act_{account_id}/insights",
+            params=params,
+            timeout=30,
+        )
+        body = response.json()
+    except requests.RequestException as exc:
+        return None, str(exc)
+
+    if "error" in body:
+        return None, body["error"].get("message", "Erro na API da Meta.")
+
+    return [process_row(row) for row in body.get("data", [])], None
+
+
+def load_cached_data():
+    try:
+        with DATA_FILE.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+        return data if isinstance(data, list) else data.get("data", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def save_cached_data(data):
+    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with DATA_FILE.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2, ensure_ascii=False)
+
+
+@app.route("/")
 def index():
-    return send_file(os.path.join(BASE_DIR, 'dashboard', 'dashboard', 'index.html'))
+    return send_file(DASHBOARD_DIR / "index.html")
 
-@app.route('/api/data')
+
+@app.route("/config-token")
+def config_token():
+    return send_file(DASHBOARD_DIR / "config-token.html")
+
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_file(DASHBOARD_DIR / filename)
+
+
+@app.route("/api/data")
 def get_data():
-    try:
-        data = load_json_data()
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
+    return json_response("success", data=load_cached_data(), updated_at=datetime.utcnow().isoformat() + "Z")
 
-@app.route('/api/config')
-def get_config():
-    try:
-        config = load_config()
-        return jsonify({
-            'token': config.get('token', {}),
-            'expires_at': config.get('token', {}).get('expires_at')
-        })
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
 
-@app.route('/api/salvar-token', methods=['POST'])
+@app.route("/api/config")
+def get_config_status():
+    try:
+        config = get_facebook_config()
+        return jsonify(
+            {
+                "configured": bool(config["access_token"] and config["ad_account_id"]),
+                "token": config.get("token", {}),
+                "expires_at": config.get("token", {}).get("expires_at"),
+                "ad_account_id": config["ad_account_id"],
+                "environment": "local",
+            }
+        )
+    except Exception as exc:
+        return json_response("error", str(exc), http_status=500)
+
+
+@app.route("/api/salvar-token", methods=["POST"])
 def salvar_token():
     try:
-        data = request.get_json()
-        novo_token = data.get('token', '').strip()
-        
-        if not novo_token:
-            return jsonify({'status': 'error', 'message': 'Token vazio!'})
-        
-        if not is_token_valid(novo_token):
-            return jsonify({'status': 'error', 'message': 'Token invalido!'})
-        
+        body = request.get_json(silent=True) or {}
+        new_token = body.get("token", "").strip()
+
+        if not new_token:
+            return json_response("error", "Token vazio.", http_status=400)
+        if not token_valid(new_token):
+            return json_response("error", "Token invalido.", http_status=400)
+
         config = load_config()
-        config['facebook']['access_token'] = novo_token
-        config['token'] = {'expires_at': (datetime.now() + timedelta(days=60)).isoformat()}
-        
+        config.setdefault("facebook", {})["access_token"] = new_token
+        config["token"] = {"expires_at": (datetime.now() + timedelta(days=60)).isoformat()}
         save_config(config)
-        
-        return jsonify({'status': 'success', 'message': 'Token salvo!'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
+        return json_response("success", "Token salvo.")
+    except Exception as exc:
+        return json_response("error", str(exc), http_status=500)
 
-@app.route('/api/update', methods=['POST'])
+
+@app.route("/api/update", methods=["POST"])
 def update_data():
-    try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        data, error = fetch_facebook_data(start_date, end_date)
-        
-        if error:
-            return jsonify({'status': 'error', 'message': error})
-        
-        if not data:
-            return jsonify({'status': 'error', 'message': 'Nenhum dado encontrado'})
-        
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        return jsonify({'status': 'success', 'message': f'{len(data)} registros atualizados!'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    data, error = fetch_facebook_data(start_date, end_date)
 
-if __name__ == '__main__':
+    if error:
+        return json_response("error", error, http_status=400)
+    if not data:
+        return json_response("error", "Nenhum dado encontrado para o periodo.", http_status=404)
+
+    save_cached_data(data)
+    return json_response("success", f"{len(data)} registros atualizados.", data=data)
+
+
+if __name__ == "__main__":
     app.run(debug=True, port=5000)

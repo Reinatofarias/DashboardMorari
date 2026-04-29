@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meta Ads Dashboard - PowerBI</title>
-    <link rel="stylesheet" href="/static/styles.css?v=10">
+    <title>MORARI Project Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css?v=11">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="app-shell">
         <header class="header">
             <div class="header-left">
+                <span class="eyebrow">Meta Ads BI</span>
                 <h1>MORARI PROJECT DASHBOARD</h1>
-                <span class="subtitle">Business Intelligence</span>
             </div>
+
             <div class="header-right">
-                <div class="date-range">
-                    <label>De: <input type="date" id="startDate"></label>
-                    <label>Ate: <input type="date" id="endDate"></label>
+                <div class="date-range" aria-label="Periodo de consulta">
+                    <label>De <input type="date" id="startDate"></label>
+                    <label>Ate <input type="date" id="endDate"></label>
                 </div>
-                <button id="btnRefresh" class="btn-refresh" onclick="refreshData()">
-                    <span class="refresh-icon">&#x21bb;</span> Atualizar Dados
+                <button id="btnRefresh" class="btn-refresh" type="button" onclick="refreshData()">
+                    <span class="refresh-icon" aria-hidden="true">&#x21bb;</span>
+                    Atualizar Dados
                 </button>
                 <span id="lastUpdate" class="last-update"></span>
             </div>
@@ -31,86 +33,71 @@
             <p>Atualizando dados...</p>
         </div>
 
-        <div class="error-message" id="errorMessage" style="display: none;"></div>
+        <div class="message info-message" id="infoMessage" style="display: none;"></div>
+        <div class="message error-message" id="errorMessage" style="display: none;"></div>
 
-        <section class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Impressoes</span>
-                    <span class="kpi-value" id="kpiImpressions">0</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Cliques</span>
-                    <span class="kpi-value" id="kpiClicks">0</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Alcance</span>
-                    <span class="kpi-value" id="kpiReach">0</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Finalizacao de Compras</span>
-                    <span class="kpi-value" id="kpiPurchases">0</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">CPA</span>
-                    <span class="kpi-value" id="kpiCPA">R$ 0,00</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Custo por Resultado</span>
-                    <span class="kpi-value" id="kpiCostPerResult">R$ 0,00</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Valor Usado</span>
-                    <span class="kpi-value" id="kpiSpend">R$ 0,00</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">CTR</span>
-                    <span class="kpi-value" id="kpiCTR">0%</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-content">
-                    <span class="kpi-label">Connect Rate</span>
-                    <span class="kpi-value" id="kpiConnectRate">0%</span>
-                </div>
-            </div>
+        <section class="kpi-grid" aria-label="Indicadores principais">
+            <article class="kpi-card">
+                <span class="kpi-label">Impressoes</span>
+                <strong class="kpi-value" id="kpiImpressions">0</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Cliques</span>
+                <strong class="kpi-value" id="kpiClicks">0</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Alcance</span>
+                <strong class="kpi-value" id="kpiReach">0</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Finalizacao de Compras</span>
+                <strong class="kpi-value" id="kpiPurchases">0</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">CPA</span>
+                <strong class="kpi-value" id="kpiCPA">R$ 0,00</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Custo por Resultado</span>
+                <strong class="kpi-value" id="kpiCostPerResult">R$ 0,00</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Valor Usado</span>
+                <strong class="kpi-value" id="kpiSpend">R$ 0,00</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">CTR</span>
+                <strong class="kpi-value" id="kpiCTR">0%</strong>
+            </article>
+            <article class="kpi-card">
+                <span class="kpi-label">Connect Rate</span>
+                <strong class="kpi-value" id="kpiConnectRate">0%</strong>
+            </article>
         </section>
 
-        <section class="charts-grid">
-            <div class="chart-card">
+        <section class="charts-grid" aria-label="Graficos">
+            <article class="chart-panel">
                 <h2>Tendencia de Impressoes e Cliques</h2>
-                <canvas id="chartTrend"></canvas>
-            </div>
-            <div class="chart-card">
+                <div class="chart-frame"><canvas id="chartTrend"></canvas></div>
+            </article>
+            <article class="chart-panel">
                 <h2>Gastos por Dia</h2>
-                <canvas id="chartSpend"></canvas>
-            </div>
-            <div class="chart-card">
+                <div class="chart-frame"><canvas id="chartSpend"></canvas></div>
+            </article>
+            <article class="chart-panel">
                 <h2>CTR por Dia</h2>
-                <canvas id="chartCTR"></canvas>
-            </div>
-            <div class="chart-card full-width">
-                <h2>Conversoes (Add to Cart, Checkout, Compras)</h2>
-                <canvas id="chartConversions"></canvas>
-            </div>
+                <div class="chart-frame"><canvas id="chartCTR"></canvas></div>
+            </article>
+            <article class="chart-panel full-width">
+                <h2>Conversoes</h2>
+                <div class="chart-frame chart-frame-large"><canvas id="chartConversions"></canvas></div>
+            </article>
         </section>
 
-        <section class="data-table-section">
-            <h2>Dados Detalhados</h2>
+        <section class="data-section">
+            <div class="section-header">
+                <h2>Dados Detalhados</h2>
+            </div>
             <div class="table-container">
                 <table id="dataTable">
                     <thead>
@@ -131,6 +118,6 @@
         </section>
     </div>
 
-    <script src="/static/dashboard.js?v=10"></script>
+    <script src="/static/dashboard.js?v=11"></script>
 </body>
 </html>
