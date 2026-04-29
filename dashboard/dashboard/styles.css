@@ -88,7 +88,8 @@ input {
     gap: 10px;
 }
 
-.date-range label {
+.date-range label,
+.campaign-filter {
     display: grid;
     gap: 5px;
     color: var(--muted);
@@ -97,7 +98,8 @@ input {
     text-transform: uppercase;
 }
 
-.date-range input {
+.date-range input,
+.campaign-filter select {
     width: 150px;
     height: 40px;
     color: var(--text);
@@ -108,7 +110,18 @@ input {
     outline: none;
 }
 
-.date-range input:focus {
+.campaign-filter select {
+    width: min(360px, 34vw);
+    cursor: pointer;
+}
+
+.campaign-filter select:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.date-range input:focus,
+.campaign-filter select:focus {
     border-color: var(--border-strong);
 }
 
@@ -308,7 +321,7 @@ input {
 
 table {
     width: 100%;
-    min-width: 900px;
+    min-width: 1060px;
     border-collapse: collapse;
 }
 
@@ -377,6 +390,8 @@ tbody tr:hover {
     .date-range,
     .date-range label,
     .date-range input,
+    .campaign-filter,
+    .campaign-filter select,
     .btn-refresh {
         width: 100%;
     }

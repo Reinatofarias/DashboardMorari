@@ -123,6 +123,8 @@ def process_row(row):
     connect_rate = (inline_clicks / clicks) * 100 if clicks else 0
 
     return {
+        "campaign_id": row.get("campaign_id", ""),
+        "campaign_name": row.get("campaign_name", "Todas as campanhas"),
         "date_start": row.get("date_start", ""),
         "date_stop": row.get("date_stop", ""),
         "impressions": impressions,
@@ -150,7 +152,7 @@ def process_row(row):
     }
 
 
-def fetch_facebook_data(start_date=None, end_date=None):
+def fetch_facebook_data(start_date=None, end_date=None, level="campaign"):
     config = get_facebook_config()
     token = config["access_token"]
     account_id = config["ad_account_id"].replace("act_", "")
@@ -164,9 +166,11 @@ def fetch_facebook_data(start_date=None, end_date=None):
 
     params = {
         "access_token": token,
-        "level": "account",
+        "level": level,
         "fields": ",".join(
             [
+                "campaign_id",
+                "campaign_name",
                 "date_start",
                 "date_stop",
                 "impressions",
@@ -285,7 +289,11 @@ def salvar_token():
 def update_data():
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
-    data, error = fetch_facebook_data(start_date, end_date)
+    level = request.args.get("level", "campaign")
+    if level not in {"account", "campaign"}:
+        level = "campaign"
+
+    data, error = fetch_facebook_data(start_date, end_date, level)
 
     if error:
         return json_response("error", error, http_status=400)

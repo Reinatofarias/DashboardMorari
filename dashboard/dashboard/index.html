@@ -16,6 +16,12 @@
             </div>
 
             <div class="header-right">
+                <label class="campaign-filter">
+                    Campanha
+                    <select id="campaignSelect" disabled>
+                        <option value="">Todas as campanhas</option>
+                    </select>
+                </label>
                 <div class="date-range" aria-label="Periodo de consulta">
                     <label>De <input type="date" id="startDate"></label>
                     <label>Ate <input type="date" id="endDate"></label>
@@ -103,6 +109,7 @@
                     <thead>
                         <tr>
                             <th>Data</th>
+                            <th>Campanha</th>
                             <th>Impressoes</th>
                             <th>Cliques</th>
                             <th>Alcance</th>

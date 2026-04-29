@@ -3,6 +3,7 @@ let spendChart = null;
 let ctrChart = null;
 let conversionsChart = null;
 let dashboardData = [];
+let selectedCampaignId = "";
 
 const chartColors = {
     gold: "#d9b44a",
@@ -125,6 +126,46 @@ function calculateKPIs(data) {
         ctr,
         connectRate
     };
+}
+
+function campaignKey(row) {
+    return row.campaign_id || row.campaign_name || "";
+}
+
+function campaignLabel(row) {
+    return row.campaign_name || (row.campaign_id ? `Campanha ${row.campaign_id}` : "Sem campanha");
+}
+
+function getFilteredData() {
+    if (!selectedCampaignId) return dashboardData;
+    return dashboardData.filter((row) => campaignKey(row) === selectedCampaignId);
+}
+
+function updateCampaignSelect(data) {
+    const select = getEl("campaignSelect");
+    if (!select) return;
+
+    const previousValue = select.value || selectedCampaignId;
+    const campaigns = new Map();
+
+    data.forEach((row) => {
+        const key = campaignKey(row);
+        if (key) campaigns.set(key, campaignLabel(row));
+    });
+
+    const sortedCampaigns = [...campaigns.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+    select.innerHTML = '<option value="">Todas as campanhas</option>';
+
+    sortedCampaigns.forEach(([id, name]) => {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = name;
+        select.appendChild(option);
+    });
+
+    select.disabled = sortedCampaigns.length === 0;
+    select.value = campaigns.has(previousValue) ? previousValue : "";
+    selectedCampaignId = select.value;
 }
 
 function updateKPIs(kpis) {
@@ -321,6 +362,7 @@ function updateTable(data) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${formatDate(row.date_start)}</td>
+            <td title="${campaignLabel(row)}">${campaignLabel(row)}</td>
             <td>${formatNumber(row.impressions)}</td>
             <td>${formatNumber(row.clicks)}</td>
             <td>${formatNumber(row.reach)}</td>
@@ -335,6 +377,8 @@ function updateTable(data) {
 
 function renderDashboard(data, sourceMessage) {
     dashboardData = Array.isArray(data) ? data : [];
+    updateCampaignSelect(dashboardData);
+    const visibleData = getFilteredData();
 
     if (!dashboardData.length) {
         setStatus("Selecione um periodo e clique em Atualizar Dados para carregar os dados da API.");
@@ -344,9 +388,9 @@ function renderDashboard(data, sourceMessage) {
         return;
     }
 
-    updateKPIs(calculateKPIs(dashboardData));
-    updateCharts(dashboardData);
-    updateTable(dashboardData);
+    updateKPIs(calculateKPIs(visibleData));
+    updateCharts(visibleData);
+    updateTable(visibleData);
     setStatus(sourceMessage || "");
     updateLastUpdate();
 }
@@ -373,7 +417,7 @@ async function refreshData() {
     setStatus("Atualizando dados da Meta...");
 
     try {
-        const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+        const params = new URLSearchParams({ start_date: startDate, end_date: endDate, level: "campaign" });
         const result = await requestJson("/api/update?" + params.toString(), { method: "POST" });
         renderDashboard(result.data || [], result.message || "Dados atualizados.");
     } catch (error) {
@@ -400,5 +444,15 @@ function setDefaultDateRange() {
 
 document.addEventListener("DOMContentLoaded", () => {
     setDefaultDateRange();
+    const campaignSelect = getEl("campaignSelect");
+    if (campaignSelect) {
+        campaignSelect.addEventListener("change", () => {
+            selectedCampaignId = campaignSelect.value;
+            const visibleData = getFilteredData();
+            updateKPIs(calculateKPIs(visibleData));
+            updateCharts(visibleData);
+            updateTable(visibleData);
+        });
+    }
     loadDashboard();
 });
